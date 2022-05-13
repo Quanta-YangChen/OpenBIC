@@ -14,6 +14,12 @@
 #include "sdr.h"
 #include "app_handler.h"
 #include "util_spi.h"
+#include "sensor.h"
+#include "pmbus.h"
+#include "hal_i2c.h"
+#include "i2c-mux-tca9548.h"
+#include "plat_hook.h"
+#include "plat_sensor_table.h"
 #include <drivers/spi_nor.h>
 #include <drivers/flash.h>
 
@@ -279,5 +285,110 @@ void APP_GET_SELFTEST_RESULTS(ipmi_msg *msg)
 	msg->data_len = 2;
 	msg->completion_code = CC_SUCCESS;
 
+	return;
+}
+
+void OEM_1S_GET_FW_VERSION(ipmi_msg *msg)
+{
+	if (msg == NULL) {
+		return;
+	}
+
+	if (msg->data_len != 1) {
+		msg->completion_code = CC_INVALID_LENGTH;
+		return;
+	}
+
+	uint8_t component;
+	ipmi_msg bridge_msg = { 0 };
+	component = msg->data[0];
+
+	if (component >= GT_COMPNT_MAX) {
+		msg->completion_code = CC_PARAM_OUT_OF_RANGE;
+		return;
+	}
+	/* 
+   * Return data format: 
+   * data[0] = component id
+   * data[1] = data length
+   * data[2] - data[data length + 1] = firmware version
+   */
+	switch (component) {
+	case GT_COMPNT_BIC:
+		msg->data[0] = GT_COMPNT_BIC;
+		msg->data[1] = 7;
+		msg->data[2] = BIC_FW_YEAR_MSB;
+		msg->data[3] = BIC_FW_YEAR_LSB;
+		msg->data[4] = BIC_FW_WEEK;
+		msg->data[5] = BIC_FW_VER;
+		msg->data[6] = BIC_FW_platform_0;
+		msg->data[7] = BIC_FW_platform_1;
+		msg->data[8] = BIC_FW_platform_2;
+		msg->data_len = 9;
+		msg->completion_code = CC_SUCCESS;
+		break;
+	case GT_COMPNT_PEX0:
+	case GT_COMPNT_PEX1:
+	case GT_COMPNT_PEX2:
+	case GT_COMPNT_PEX3:
+		/* Get PEX start index*/
+		bridge_msg.data[0] = component - GT_COMPNT_PEX0;
+		/* PEX firmware version in flash offset 0x5F8 and length is 4 bytes */
+		bridge_msg.data[1] = 0xF8;
+		bridge_msg.data[2] = 0x05;
+		bridge_msg.data[3] = 0x04;
+		bridge_msg.data_len = 4;
+
+		OEM_1S_PEX_FLASH_READ(&bridge_msg);
+		memcpy(&msg->data[2], &bridge_msg.data[0], bridge_msg.data_len);
+
+		msg->data[0] = component;
+		msg->data[1] = bridge_msg.data_len;
+		msg->data_len = bridge_msg.data_len + 2;
+		msg->completion_code = bridge_msg.completion_code;
+		break;
+	case GT_COMPNT_CPLD:
+		bridge_msg.data_len = 0;
+		OEM_1S_GET_FPGA_USER_CODE(&bridge_msg);
+		memcpy(&msg->data[2], &bridge_msg.data[0], bridge_msg.data_len);
+		msg->data[0] = component;
+		msg->data[1] = bridge_msg.data_len;
+		msg->data_len = bridge_msg.data_len + 2;
+		msg->completion_code = bridge_msg.completion_code;
+		break;
+	case GT_COMPNT_VR0:
+	case GT_COMPNT_VR1: {
+		I2C_MSG i2c_msg = {0};
+		uint8_t retry = 3;
+    /* Assign VR 0/1 related sensor number to get information for accessing VR */
+		uint8_t sensor_num = (component == GT_COMPNT_VR0) ? SENSOR_NUM_TEMP_PEX_1 :
+								    SENSOR_NUM_TEMP_PEX_3;
+		if (!tca9548_select_chan(sensor_num, &mux_conf_addr_0xe0[6])) {
+			msg->completion_code = CC_UNSPECIFIED_ERROR;
+			return;
+		}
+    /* Get bus and target address by sensor number in sensor configuration */
+		i2c_msg.bus = sensor_config[sensor_config_index_map[sensor_num]].port;
+		i2c_msg.target_addr =
+			sensor_config[sensor_config_index_map[sensor_num]].target_addr;
+		i2c_msg.tx_len = 1;
+		i2c_msg.rx_len = 4;
+		i2c_msg.data[0] = PMBUS_MFR_REVISION;
+
+		if (i2c_master_read(&i2c_msg, retry)) {
+			msg->completion_code = CC_UNSPECIFIED_ERROR;
+			return;
+		}
+		msg->data[0] = component;
+		msg->data[1] = i2c_msg.rx_len;
+		memcpy(&msg->data[2], &i2c_msg.data[0], i2c_msg.rx_len);
+		msg->data_len = i2c_msg.rx_len + 2;
+		msg->completion_code = CC_SUCCESS;
+		break;
+	};
+	default:
+		msg->completion_code = CC_UNSPECIFIED_ERROR;
+		break;
+	}
 	return;
 }
