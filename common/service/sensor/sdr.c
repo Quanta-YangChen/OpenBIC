@@ -10,8 +10,6 @@ SDR_INFO sdr_info;
 static uint16_t RSV_ID[2] = { 0 };
 bool is_sdr_not_init = true;
 
-SDR_Full_sensor full_sdr_table[MAX_SENSOR_SIZE];
-
 uint8_t SDR_NUM = 0;
 
 void SDR_clear_ID(void)

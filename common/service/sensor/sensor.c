@@ -33,9 +33,9 @@ static bool sensor_poll_enable_flag = true;
 
 static bool is_sensor_ready_flag = false;
 
-const int negative_ten_power[16] = { 1,	    1,		1,	   1,	     1,	      1,
-				     1,	    1000000000, 100000000, 10000000, 1000000, 100000,
-				     10000, 1000,	100,	   10 };
+const int negative_ten_power[16] = { 1,     1,		1,	 1,	1,       1,
+				     1,     1000000000, 100000000, 10000000, 1000000, 100000,
+				     10000, 1000,       100,       10 };
 
 sensor_cfg *sensor_config;
 uint8_t sensor_config_num;
@@ -351,6 +351,13 @@ static void drive_init(void)
 		sensor_cfg *p = sensor_config + i;
 		for (j = 0; j < drive_num; j++) {
 			if (p->type == sensor_drive_tbl[j].dev) {
+				if (p->pre_sensor_read_hook) {
+					if (p->pre_sensor_read_hook(
+						    p->num, p->pre_sensor_read_args) == false) {
+						printk("[%s] sensor %d pre sensor read failed!\n",
+						       __func__, p->num);
+					}
+				}
 				ret = sensor_drive_tbl[j].init(p->num);
 				if (ret != SENSOR_INIT_SUCCESS)
 					printf("sensor num %d initial fail, ret %d\n", p->num, ret);
