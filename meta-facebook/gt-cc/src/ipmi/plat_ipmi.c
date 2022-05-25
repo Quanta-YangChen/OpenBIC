@@ -1,3 +1,4 @@
+#include "pldm.h"
 #include "plat_ipmi.h"
 
 #include <stdio.h>
@@ -20,6 +21,7 @@
 #include "i2c-mux-tca9548.h"
 #include "plat_hook.h"
 #include "plat_sensor_table.h"
+#include "plat_mctp.h"
 #include <drivers/spi_nor.h>
 #include <drivers/flash.h>
 
@@ -358,16 +360,16 @@ void OEM_1S_GET_FW_VERSION(ipmi_msg *msg)
 		break;
 	case GT_COMPNT_VR0:
 	case GT_COMPNT_VR1: {
-		I2C_MSG i2c_msg = {0};
+		I2C_MSG i2c_msg = { 0 };
 		uint8_t retry = 3;
-    /* Assign VR 0/1 related sensor number to get information for accessing VR */
+		/* Assign VR 0/1 related sensor number to get information for accessing VR */
 		uint8_t sensor_num = (component == GT_COMPNT_VR0) ? SENSOR_NUM_TEMP_PEX_1 :
 								    SENSOR_NUM_TEMP_PEX_3;
 		if (!tca9548_select_chan(sensor_num, &mux_conf_addr_0xe0[6])) {
 			msg->completion_code = CC_UNSPECIFIED_ERROR;
 			return;
 		}
-    /* Get bus and target address by sensor number in sensor configuration */
+		/* Get bus and target address by sensor number in sensor configuration */
 		i2c_msg.bus = sensor_config[sensor_config_index_map[sensor_num]].port;
 		i2c_msg.target_addr =
 			sensor_config[sensor_config_index_map[sensor_num]].target_addr;
@@ -386,6 +388,23 @@ void OEM_1S_GET_FW_VERSION(ipmi_msg *msg)
 		msg->completion_code = CC_SUCCESS;
 		break;
 	};
+	case GT_COMPNT_NIC0: 
+  case GT_COMPNT_NIC1:
+  case GT_COMPNT_NIC2:
+  case GT_COMPNT_NIC3: 
+  case GT_COMPNT_NIC4: 
+  case GT_COMPNT_NIC5:
+  case GT_COMPNT_NIC6:
+  case GT_COMPNT_NIC7: {
+		uint8_t idx = component - GT_COMPNT_NIC0;
+		msg->data[0] = component;
+		msg->data[1] = nic_vesion[idx].length;
+
+		memcpy(&msg->data[2], nic_vesion[idx].ptr, nic_vesion[idx].length);
+		msg->data_len = nic_vesion[idx].length + 2;
+		msg->completion_code = CC_SUCCESS;
+		break;
+	}
 	default:
 		msg->completion_code = CC_UNSPECIFIED_ERROR;
 		break;
