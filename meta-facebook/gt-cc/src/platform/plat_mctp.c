@@ -48,6 +48,9 @@ LOG_MODULE_REGISTER(plat_mctp);
 #define MCTP_EID_NIC_6 0x16
 #define MCTP_EID_NIC_7 0x17
 
+K_TIMER_DEFINE(send_cmd_timer, send_cmd_to_dev, NULL);
+K_WORK_DEFINE(send_cmd_work, send_cmd_handler);
+
 typedef struct _mctp_smbus_port {
 	mctp *mctp_inst;
 	mctp_medium_conf conf;
@@ -69,25 +72,26 @@ typedef struct _mctp_msg_handler {
 static mctp_smbus_port smbus_port[] = {
 	{ .conf.smbus_conf.addr = I2C_ADDR_BIC, .conf.smbus_conf.bus = I2C_BUS_BMC },
 	{ .conf.smbus_conf.addr = I2C_ADDR_BIC, .conf.smbus_conf.bus = I2C_BUS_NIC_0 },
-  { .conf.smbus_conf.addr = I2C_ADDR_BIC, .conf.smbus_conf.bus = I2C_BUS_NIC_1 },
-  { .conf.smbus_conf.addr = I2C_ADDR_BIC, .conf.smbus_conf.bus = I2C_BUS_NIC_2 },
-  { .conf.smbus_conf.addr = I2C_ADDR_BIC, .conf.smbus_conf.bus = I2C_BUS_NIC_3 },
-  { .conf.smbus_conf.addr = I2C_ADDR_BIC, .conf.smbus_conf.bus = I2C_BUS_NIC_4 },
-  { .conf.smbus_conf.addr = I2C_ADDR_BIC, .conf.smbus_conf.bus = I2C_BUS_NIC_5 },
-  { .conf.smbus_conf.addr = I2C_ADDR_BIC, .conf.smbus_conf.bus = I2C_BUS_NIC_6 },
-  { .conf.smbus_conf.addr = I2C_ADDR_BIC, .conf.smbus_conf.bus = I2C_BUS_NIC_7 },
+	{ .conf.smbus_conf.addr = I2C_ADDR_BIC, .conf.smbus_conf.bus = I2C_BUS_NIC_1 },
+	{ .conf.smbus_conf.addr = I2C_ADDR_BIC, .conf.smbus_conf.bus = I2C_BUS_NIC_2 },
+	{ .conf.smbus_conf.addr = I2C_ADDR_BIC, .conf.smbus_conf.bus = I2C_BUS_NIC_3 },
+	{ .conf.smbus_conf.addr = I2C_ADDR_BIC, .conf.smbus_conf.bus = I2C_BUS_NIC_4 },
+	{ .conf.smbus_conf.addr = I2C_ADDR_BIC, .conf.smbus_conf.bus = I2C_BUS_NIC_5 },
+	{ .conf.smbus_conf.addr = I2C_ADDR_BIC, .conf.smbus_conf.bus = I2C_BUS_NIC_6 },
+	{ .conf.smbus_conf.addr = I2C_ADDR_BIC, .conf.smbus_conf.bus = I2C_BUS_NIC_7 },
 };
 
-mctp_route_entry mctp_route_tbl[] = { 
-                  { MCTP_EID_BMC, I2C_BUS_BMC, I2C_ADDR_BMC },
-				      { MCTP_EID_NIC_0, I2C_BUS_NIC_0, I2C_ADDR_NIC },
-              { MCTP_EID_NIC_1, I2C_BUS_NIC_1, I2C_ADDR_NIC },
-              { MCTP_EID_NIC_2, I2C_BUS_NIC_2, I2C_ADDR_NIC },
-              { MCTP_EID_NIC_3, I2C_BUS_NIC_3, I2C_ADDR_NIC }, 
-              { MCTP_EID_NIC_4, I2C_BUS_NIC_4, I2C_ADDR_NIC },
-              { MCTP_EID_NIC_5, I2C_BUS_NIC_5, I2C_ADDR_NIC },
-              { MCTP_EID_NIC_6, I2C_BUS_NIC_6, I2C_ADDR_NIC },
-              { MCTP_EID_NIC_7, I2C_BUS_NIC_7, I2C_ADDR_NIC }, };
+mctp_route_entry mctp_route_tbl[] = {
+	{ MCTP_EID_BMC, I2C_BUS_BMC, I2C_ADDR_BMC },
+	{ MCTP_EID_NIC_0, I2C_BUS_NIC_0, I2C_ADDR_NIC },
+	{ MCTP_EID_NIC_1, I2C_BUS_NIC_1, I2C_ADDR_NIC },
+	{ MCTP_EID_NIC_2, I2C_BUS_NIC_2, I2C_ADDR_NIC },
+	{ MCTP_EID_NIC_3, I2C_BUS_NIC_3, I2C_ADDR_NIC },
+	{ MCTP_EID_NIC_4, I2C_BUS_NIC_4, I2C_ADDR_NIC },
+	{ MCTP_EID_NIC_5, I2C_BUS_NIC_5, I2C_ADDR_NIC },
+	{ MCTP_EID_NIC_6, I2C_BUS_NIC_6, I2C_ADDR_NIC },
+	{ MCTP_EID_NIC_7, I2C_BUS_NIC_7, I2C_ADDR_NIC },
+};
 
 static mctp *find_mctp_by_smbus(uint8_t bus)
 {
@@ -111,9 +115,9 @@ static void set_endpoint_resp_handler(void *args, uint8_t *buf, uint16_t len)
 
 static void set_endpoint_resp_timeout(void *args)
 {
-	printk("%s\n", __func__);
 	mctp_route_entry *p = (mctp_route_entry *)args;
-	printk("p->addr = %x\n", p->addr);
+	printk("[%s] Endpoint 0x%x set endpoint failed on bus %d \n", __func__, p->endpoint,
+	       p->bus);
 }
 
 static void set_dev_endpoint(void)
@@ -155,7 +159,9 @@ static void set_dev_endpoint(void)
 
 static void get_dev_firmware_resp_timeout(void *args)
 {
-	printk("%s\n", __func__);
+	mctp_route_entry *p = (mctp_route_entry *)args;
+	printk("[%s] Endpoint 0x%x get parameter failed on bus %d \n", __func__, p->endpoint,
+	       p->bus);
 }
 
 struct pldm_variable_field nic_vesion[8];
@@ -164,7 +170,7 @@ static void get_dev_firmware_resp_handler(void *args, uint8_t *buf, uint16_t len
 {
 	if (!buf || !len)
 		return;
-	LOG_HEXDUMP_WRN(buf, len, __func__);
+
 	mctp_route_entry *p = (mctp_route_entry *)args;
 	struct pldm_get_firmware_parameters_resp *response =
 		(struct pldm_get_firmware_parameters_resp *)buf;
@@ -176,45 +182,37 @@ static void get_dev_firmware_resp_handler(void *args, uint8_t *buf, uint16_t len
 	nic_vesion[nic_index].length = response->active_comp_image_set_ver_str_len;
 	memcpy(nic_vesion[nic_index].ptr, buf + sizeof(struct pldm_get_firmware_parameters_resp),
 	       nic_vesion[nic_index].length);
-
-	printk("NIC %d version is ", nic_index);
-	for (int i = 0; i < nic_vesion[nic_index].length; i++)
-		printk("%c", nic_vesion[nic_index].ptr[i]);
-	printk("\n");
 }
 
 static void get_dev_firmware_parameters(void)
 {
-  for (uint8_t i = 0; i < ARRAY_SIZE(mctp_route_tbl); i++) {
+	for (uint8_t i = 0; i < ARRAY_SIZE(mctp_route_tbl); i++) {
 		mctp_route_entry *p = mctp_route_tbl + i;
 
-    if (p->addr != I2C_ADDR_NIC)
-      continue;
-    
-    for (uint8_t j = 0; j < ARRAY_SIZE(smbus_port); j++) {
+		if (p->addr != I2C_ADDR_NIC)
+			continue;
+
+		for (uint8_t j = 0; j < ARRAY_SIZE(smbus_port); j++) {
 			if (p->bus != smbus_port[j].conf.smbus_conf.bus)
 				continue;
-    
-    }
-    pldm_msg msg = { 0 };
+		}
+		pldm_msg msg = { 0 };
 
-    msg.ext_params.type = MCTP_MEDIUM_TYPE_SMBUS;
-    msg.ext_params.smbus_ext_params.addr = p->addr;
+		msg.ext_params.type = MCTP_MEDIUM_TYPE_SMBUS;
+		msg.ext_params.smbus_ext_params.addr = p->addr;
 
+		msg.hdr.pldm_type = PLDM_TYPE_FW_UPDATE;
+		msg.hdr.cmd = 0x02;
+		msg.hdr.rq = 1;
+		msg.len = 0;
 
-    msg.hdr.pldm_type = PLDM_TYPE_FW_UPDATE;
-    msg.hdr.cmd = 0x02;
-    msg.hdr.rq = 1;
-    msg.len = 0;
+		msg.recv_resp_cb_fn = get_dev_firmware_resp_handler;
+		msg.recv_resp_cb_args = p;
+		msg.timeout_cb_fn = get_dev_firmware_resp_timeout;
+		msg.timeout_cb_fn_args = p;
 
-    msg.recv_resp_cb_fn = get_dev_firmware_resp_handler;
-    msg.recv_resp_cb_args = p;
-    msg.timeout_cb_fn = get_dev_firmware_resp_timeout;
-    msg.timeout_cb_fn_args = p;
-
-    mctp_pldm_send_msg(find_mctp_by_smbus(p->bus), &msg);
-  
-  }
+		mctp_pldm_send_msg(find_mctp_by_smbus(p->bus), &msg);
+	}
 }
 
 static uint8_t mctp_msg_recv(void *mctp_p, uint8_t *buf, uint32_t len, mctp_ext_params ext_params)
@@ -267,6 +265,17 @@ static uint8_t get_mctp_route_info(uint8_t dest_endpoint, void **mctp_inst,
 	return rc;
 }
 
+void send_cmd_handler(struct k_work *work)
+{
+	/* init the device endpoint */
+	set_dev_endpoint();
+	/* get device parameters */
+	get_dev_firmware_parameters();
+}
+void send_cmd_to_dev(struct k_timer *timer)
+{
+	k_work_submit(&send_cmd_work);
+}
 void plat_mctp_init(void)
 {
 	LOG_INF("plat_mctp_init");
@@ -295,8 +304,5 @@ void plat_mctp_init(void)
 		mctp_start(p->mctp_inst);
 	}
 
-	/* init the device endpoint */
-	k_msleep(10);
-	set_dev_endpoint();
-	get_dev_firmware_parameters();
+	k_timer_start(&send_cmd_timer, K_MSEC(3000), K_NO_WAIT);
 }
