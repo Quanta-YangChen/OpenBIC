@@ -357,6 +357,7 @@ void OEM_1S_GET_FW_VERSION(ipmi_msg *msg)
 	case GT_COMPNT_VR1: {
 		I2C_MSG i2c_msg = { 0 };
 		uint8_t retry = 3;
+		uint8_t buf[5] = { 0 };
 		/* Assign VR 0/1 related sensor number to get information for accessing VR */
 		uint8_t sensor_num = (component == GT_COMPNT_VR0) ? SENSOR_NUM_TEMP_PEX_1 :
 								    SENSOR_NUM_TEMP_PEX_3;
@@ -368,29 +369,69 @@ void OEM_1S_GET_FW_VERSION(ipmi_msg *msg)
 		i2c_msg.bus = sensor_config[sensor_config_index_map[sensor_num]].port;
 		i2c_msg.target_addr =
 			sensor_config[sensor_config_index_map[sensor_num]].target_addr;
-		i2c_msg.tx_len = 1;
+
+		/* Write to PMBus command DMAADDR (0xC7) and configuration id address is 0x3F*/
+		i2c_msg.tx_len = 3;
+		i2c_msg.data[0] = 0xC7;
+		i2c_msg.data[1] = 0x3F;
+		i2c_msg.data[2] = 0x00;
+
+		if (i2c_master_write(&i2c_msg, retry)) {
+			msg->completion_code = CC_UNSPECIFIED_ERROR;
+			return;
+		}
+		/* Read DMA data register */
+		i2c_msg.tx_len = 2;
 		i2c_msg.rx_len = 4;
-		i2c_msg.data[0] = PMBUS_MFR_REVISION;
+		i2c_msg.data[0] = 0xC5;
+		i2c_msg.data[1] = 0xC1;
 
 		if (i2c_master_read(&i2c_msg, retry)) {
 			msg->completion_code = CC_UNSPECIFIED_ERROR;
 			return;
 		}
+
+		memcpy(buf, i2c_msg.data, 4);
+
+		/* Write to PMBus command DMAADDR (0xC7) and number of available NVM slots address is 0xC2 */
+		i2c_msg.tx_len = 3;
+		i2c_msg.data[0] = 0xC7;
+		i2c_msg.data[1] = 0xC2;
+		i2c_msg.data[2] = 0x00;
+
+		if (i2c_master_write(&i2c_msg, retry)) {
+			msg->completion_code = CC_UNSPECIFIED_ERROR;
+			return;
+		}
+
+		/* Read DMA data register */
+		i2c_msg.tx_len = 2;
+		i2c_msg.rx_len = 4;
+		i2c_msg.data[0] = 0xC5;
+		i2c_msg.data[1] = 0xC1;
+
+		if (i2c_master_read(&i2c_msg, retry)) {
+			msg->completion_code = CC_UNSPECIFIED_ERROR;
+			return;
+		}
+
+		memcpy(&buf[4], i2c_msg.data, 1);
+
 		msg->data[0] = component;
-		msg->data[1] = i2c_msg.rx_len;
-		memcpy(&msg->data[2], &i2c_msg.data[0], i2c_msg.rx_len);
-		msg->data_len = i2c_msg.rx_len + 2;
+		msg->data[1] = 5;
+		memcpy(&msg->data[2], &buf[0], sizeof(buf));
+		msg->data_len = 7;
 		msg->completion_code = CC_SUCCESS;
 		break;
 	};
-	case GT_COMPNT_NIC0: 
-  case GT_COMPNT_NIC1:
-  case GT_COMPNT_NIC2:
-  case GT_COMPNT_NIC3: 
-  case GT_COMPNT_NIC4: 
-  case GT_COMPNT_NIC5:
-  case GT_COMPNT_NIC6:
-  case GT_COMPNT_NIC7: {
+	case GT_COMPNT_NIC0:
+	case GT_COMPNT_NIC1:
+	case GT_COMPNT_NIC2:
+	case GT_COMPNT_NIC3:
+	case GT_COMPNT_NIC4:
+	case GT_COMPNT_NIC5:
+	case GT_COMPNT_NIC6:
+	case GT_COMPNT_NIC7: {
 		uint8_t idx = component - GT_COMPNT_NIC0;
 		msg->data[0] = component;
 		msg->data[1] = nic_vesion[idx].length;
