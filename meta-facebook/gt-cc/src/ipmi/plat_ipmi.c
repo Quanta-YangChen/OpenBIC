@@ -57,7 +57,7 @@ void OEM_1S_FW_UPDATE(ipmi_msg *msg)
 		return;
 	}
 
-	if ((target == SWB_BIC_UPDATE) || (target == (SWB_BIC_UPDATE | IS_SECTOR_END_MASK))) {
+	if ((target == GT_COMPNT_BIC) || (target == (GT_COMPNT_BIC | IS_SECTOR_END_MASK))) {
 		// Expect BIC firmware size not bigger than 320k
 		if (offset > BIC_UPDATE_MAX_OFFSET) {
 			msg->completion_code = CC_PARAM_OUT_OF_RANGE;
@@ -65,13 +65,13 @@ void OEM_1S_FW_UPDATE(ipmi_msg *msg)
 		}
 		status = fw_update(offset, length, &msg->data[7], (target & IS_SECTOR_END_MASK),
 				   DEVSPI_FMC_CS0);
-	} else if (((target & WITHOUT_SENCTOR_END_MASK) == PEX0_UPDATE) ||
-		   ((target & WITHOUT_SENCTOR_END_MASK) == PEX1_UPDATE) ||
-		   ((target & WITHOUT_SENCTOR_END_MASK) == PEX2_UPDATE) ||
-		   ((target & WITHOUT_SENCTOR_END_MASK) == PEX3_UPDATE)) {
+	} else if (((target & WITHOUT_SENCTOR_END_MASK) == GT_COMPNT_PEX0) ||
+		   ((target & WITHOUT_SENCTOR_END_MASK) == GT_COMPNT_PEX1) ||
+		   ((target & WITHOUT_SENCTOR_END_MASK) == GT_COMPNT_PEX2) ||
+		   ((target & WITHOUT_SENCTOR_END_MASK) == GT_COMPNT_PEX3)) {
 		uint8_t flash_sel_pin[4] = { BIC_SEL_FLASH_SW0, BIC_SEL_FLASH_SW1,
 					     BIC_SEL_FLASH_SW2, BIC_SEL_FLASH_SW3 };
-		uint8_t flash_sel_base = BIC_SEL_FLASH_SW0 - PEX0_UPDATE;
+		uint8_t flash_sel_base = BIC_SEL_FLASH_SW0 - GT_COMPNT_PEX0;
 		uint8_t current_sel_pin = 0xFF;
 
 		/* change mux to pex flash */
