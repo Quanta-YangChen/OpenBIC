@@ -25,8 +25,6 @@
 #include <drivers/spi_nor.h>
 #include <drivers/flash.h>
 
-static bool spi_isInitialized = false;
-
 void OEM_1S_FW_UPDATE(ipmi_msg *msg)
 {
 	if (msg == NULL) {
@@ -168,13 +166,10 @@ void OEM_1S_PEX_FLASH_READ(ipmi_msg *msg)
 		msg->completion_code = CC_UNSPECIFIED_ERROR;
 		return;
 	}
-	if (!spi_isInitialized) {
-		/* Due to the SPI in this project has mux so call this function to re-init*/
-		if (spi_nor_re_init(flash_dev)) {
-			msg->completion_code = CC_UNSPECIFIED_ERROR;
-			return;
-		}
-		spi_isInitialized = true;
+	/* Due to the SPI in this project has mux so call this function to re-init*/
+	if (spi_nor_re_init(flash_dev)) {
+		msg->completion_code = CC_UNSPECIFIED_ERROR;
+		return;
 	}
 
 	if (flash_read(flash_dev, addr, &msg->data[0], read_len) != 0) {
