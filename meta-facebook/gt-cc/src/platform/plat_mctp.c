@@ -58,7 +58,7 @@ LOG_MODULE_REGISTER(plat_mctp);
 #define I2C_BUS_NIC_7 0x0D
 /* mctp endpoint */
 #define MCTP_EID_BMC 0x08
-#define MCTP_EID_NIC_0 0x10
+#define MCTP_EID_NIC_0 0x20
 #define MCTP_EID_NIC_1 0x11
 #define MCTP_EID_NIC_2 0x12
 #define MCTP_EID_NIC_3 0x13

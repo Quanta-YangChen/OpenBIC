@@ -223,12 +223,15 @@ static void mctp_rx_task(void *arg, void *dummy0, void *dummy1)
 		ext_params.tag_owner = 0;
 		ext_params.ep = hdr->src_ep;
 
-		if ((hdr->dest_ep != mctp_inst->endpoint) && (hdr->dest_ep != MCTP_NULL_EID)) {
-			/* try to bridge this packet */
-			ret = bridge_msg(mctp_inst, read_buf, read_len);
-			if (ret == MCTP_ERROR)
-				LOG_WRN("Bridge to endpoint 0x%x failed ", hdr->dest_ep);
-			continue;
+		if (hdr->dest_ep != 0x10) {
+			if ((hdr->dest_ep != mctp_inst->endpoint) &&
+			    (hdr->dest_ep != MCTP_NULL_EID)) {
+				/* try to bridge this packet */
+				ret = bridge_msg(mctp_inst, read_buf, read_len);
+				if (ret == MCTP_ERROR)
+					LOG_WRN("Bridge to endpoint 0x%x failed ", hdr->dest_ep);
+				continue;
+			}
 		}
 
 		/* handle this packet by self */
@@ -347,12 +350,15 @@ static void mctp_tx_task(void *arg, void *dummy0, void *dummy1)
        * If the message is response, keep the original msg_tag of ext_params
 */
 			hdr->msg_tag = (hdr->to) ? (msg_tag & MCTP_HDR_TAG_MASK) :
-							 mctp_msg.ext_params.msg_tag;
+						   mctp_msg.ext_params.msg_tag;
 
 			hdr->dest_ep = mctp_msg.ext_params.ep;
 			hdr->src_ep = mctp_inst->endpoint;
 			hdr->hdr_ver = MCTP_HDR_HDR_VER;
 
+			if (mctp_msg.buf[2] == 0x05) {
+				hdr->src_ep = 0x10;
+			}
 			LOG_DBG("i = %d, cp_msg_size = %d", i, cp_msg_size);
 			LOG_DBG("hdr->flags_seq_to_tag = %x", hdr->flags_seq_to_tag);
 			memcpy(buf + MCTP_TRANSPORT_HEADER_SIZE, mctp_msg.buf + i * max_msg_size,
