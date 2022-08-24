@@ -21,25 +21,38 @@ static enum pldm_firmware_update_state pre_state = STATE_IDLE;
 static uint32_t comp_image_size;
 
 uint16_t pldm_fw_update_read(void *mctp_p, enum pldm_firmware_update_commands cmd, uint8_t *req,
-			     uint16_t req_len, uint8_t *rbuf, uint16_t rbuf_len)
+			     uint16_t req_len, uint8_t *rbuf, uint16_t rbuf_len, void *ext_params)
 {
-	pldm_msg msg = { 0 };
+	if (!mctp_p || !req || !rbuf || !ext_params) {
+		printf("[%s] Pass argument is NULL, \n", __func__);
+		/* return read length zero means fail */
+		return 0;
+	}
 
-	msg.ext_params.type = MCTP_MEDIUM_TYPE_SMBUS;
-	msg.ext_params.smbus_ext_params.addr = 0x20;
+	pldm_msg msg = { 0 };
+	mctp_ext_params *extra_data = (mctp_ext_params *)ext_params;
+
+	msg.ext_params = *extra_data;
 
 	msg.hdr.pldm_type = PLDM_TYPE_FW_UPDATE;
 	msg.hdr.cmd = cmd;
 	msg.hdr.rq = 1;
-	//msg.ext_params.ep = 0x08;
+
 	msg.buf = req;
 	msg.len = req_len;
 
 	return mctp_pldm_read(mctp_p, &msg, rbuf, rbuf_len);
 }
 
-static void update_fail_handler(void *mctp_p)
+static void update_fail_handler(void *mctp_p, void *ext_params)
 {
+	if (!mctp_p || !ext_params) {
+		printf("[%s] Pass argument is NULL, \n", __func__);
+		pre_state = current_state;
+		current_state = STATE_IDLE;
+		return;
+	}
+
 	uint16_t read_len;
 	uint16_t rbuf_len = 10;
 
@@ -53,7 +66,7 @@ static void update_fail_handler(void *mctp_p)
 		read_len = pldm_fw_update_read(mctp_p, PLDM_FW_UPDATE_CMD_CODE_TRANSFER_COMPLETE,
 					       (uint8_t *)&tran_comp_req,
 					       sizeof(struct pldm_transfer_complete_req), rbuf,
-					       rbuf_len);
+					       rbuf_len, ext_params);
 
 		if ((read_len != 1) || (rbuf[0] != PLDM_SUCCESS)) {
 			printf("[%s] Send transfer complete error fail \n", __func__);
@@ -67,7 +80,7 @@ static void update_fail_handler(void *mctp_p)
 		read_len = pldm_fw_update_read(mctp_p, PLDM_FW_UPDATE_CMD_CODE_TRANSFER_COMPLETE,
 					       (uint8_t *)&verify_comp_req,
 					       sizeof(struct pldm_verify_complete_req), rbuf,
-					       rbuf_len);
+					       rbuf_len, ext_params);
 
 		if ((read_len != 1) || (rbuf[0] != PLDM_SUCCESS)) {
 			printf("[%s] Send verify complete error fail \n", __func__);
@@ -79,10 +92,10 @@ static void update_fail_handler(void *mctp_p)
 		apply_comp_req.applyResult = PLDM_FW_UPDATE_GENERIC_ERROR;
 		apply_comp_req.compActivationMethodsModification = 0x0000;
 
-		read_len =
-			pldm_fw_update_read(mctp_p, PLDM_FW_UPDATE_CMD_CODE_TRANSFER_COMPLETE,
-					    (uint8_t *)&apply_comp_req,
-					    sizeof(struct pldm_apply_complete_req), rbuf, rbuf_len);
+		read_len = pldm_fw_update_read(mctp_p, PLDM_FW_UPDATE_CMD_CODE_TRANSFER_COMPLETE,
+					       (uint8_t *)&apply_comp_req,
+					       sizeof(struct pldm_apply_complete_req), rbuf,
+					       rbuf_len, ext_params);
 
 		if ((read_len != 1) || (rbuf[0] != PLDM_SUCCESS)) {
 			printf("[%s] Send apply complete error fail \n", __func__);
@@ -93,19 +106,28 @@ static void update_fail_handler(void *mctp_p)
 		break;
 	}
 
+	if (fw_update_tid) {
+		fw_update_tid = NULL;
+	}
+	SAFE_FREE(ext_params);
 	return;
 }
 
-void req_fw_update_handler(void *mctp_p, void *arg1, void *arg2)
+void req_fw_update_handler(void *mctp_p, void *ext_params, void *arg2)
 {
+	ARG_UNUSED(arg2);
+
+	if (!mctp_p || !ext_params) {
+		printf("[%s] Pass argument is NULL, \n", __func__);
+		pre_state = current_state;
+		current_state = STATE_IDLE;
+		SAFE_FREE(ext_params);
+		return;
+	}
+
 	uint16_t read_len;
 	uint8_t update_flag = 0;
-	uint8_t *resp_buf = malloc(sizeof(uint8_t) * FW_UPDATE_BUF_SIZE);
-
-	if (!resp_buf) {
-		printf("[%s] read buffer allocate memory failed\n", __func__);
-		goto error;
-	}
+	uint8_t resp_buf[FW_UPDATE_BUF_SIZE] = { 0 };
 
 	struct pldm_request_firmware_data_req req = { 0 };
 
@@ -137,14 +159,11 @@ void req_fw_update_handler(void *mctp_p, void *arg1, void *arg2)
 			}
 		}
 
-		// printf("[%s] Request firmware data (offset: 0x%x len: %d)\n", __func__, req.offset,
-		//        req.length);
-
 		read_len =
 			pldm_fw_update_read(mctp_p, PLDM_FW_UPDATE_CMD_CODE_REQUEST_FIRMWARE_DATA,
 					    (uint8_t *)&req,
 					    sizeof(struct pldm_request_firmware_data_req), resp_buf,
-					    FW_UPDATE_BUF_SIZE);
+					    FW_UPDATE_BUF_SIZE, ext_params);
 
 		/* read_len = request length + completion code */
 		if (read_len != req.length + 1) {
@@ -172,7 +191,7 @@ void req_fw_update_handler(void *mctp_p, void *arg1, void *arg2)
 	read_len = pldm_fw_update_read(mctp_p, PLDM_FW_UPDATE_CMD_CODE_TRANSFER_COMPLETE,
 				       (uint8_t *)&tran_comp_req,
 				       sizeof(struct pldm_transfer_complete_req), resp_buf,
-				       FW_UPDATE_BUF_SIZE);
+				       FW_UPDATE_BUF_SIZE, ext_params);
 
 	if ((read_len != 1) || (resp_buf[0] != PLDM_SUCCESS)) {
 		printf("[%s] Transfer complete fail comp code (0x%x)", __func__, resp_buf[0]);
@@ -190,7 +209,7 @@ void req_fw_update_handler(void *mctp_p, void *arg1, void *arg2)
 	read_len = pldm_fw_update_read(mctp_p, PLDM_FW_UPDATE_CMD_CODE_VERIFY_COMPLETE,
 				       (uint8_t *)&verify_comp_req,
 				       sizeof(struct pldm_verify_complete_req), resp_buf,
-				       FW_UPDATE_BUF_SIZE);
+				       FW_UPDATE_BUF_SIZE, ext_params);
 
 	if ((read_len != 1) || (resp_buf[0] != PLDM_SUCCESS)) {
 		printf("[%s] Verify complete fail comp code (0x%x)", __func__, resp_buf[0]);
@@ -209,7 +228,7 @@ void req_fw_update_handler(void *mctp_p, void *arg1, void *arg2)
 	read_len = pldm_fw_update_read(mctp_p, PLDM_FW_UPDATE_CMD_CODE_APPLY_COMPLETE,
 				       (uint8_t *)&apply_comp_req,
 				       sizeof(struct pldm_apply_complete_req), resp_buf,
-				       FW_UPDATE_BUF_SIZE);
+				       FW_UPDATE_BUF_SIZE, ext_params);
 
 	if ((read_len != 1) || (resp_buf[0] != PLDM_SUCCESS)) {
 		printf("[%s] Apply complete fail comp code (0x%x)", __func__, resp_buf[0]);
@@ -218,13 +237,18 @@ void req_fw_update_handler(void *mctp_p, void *arg1, void *arg2)
 	pre_state = current_state;
 	current_state = STATE_RDY_XFER;
 	comp_image_size = 0;
-	SAFE_FREE(resp_buf);
+
+	if (fw_update_tid) {
+		fw_update_tid = NULL;
+	}
+
+	SAFE_FREE(ext_params);
 	return;
 
 error:
-	update_fail_handler(mctp_p);
+	update_fail_handler(mctp_p, ext_params);
 	comp_image_size = 0;
-	SAFE_FREE(resp_buf);
+	SAFE_FREE(ext_params);
 	return;
 }
 
@@ -232,6 +256,9 @@ static uint8_t request_update(void *mctp_inst, uint8_t *buf, uint16_t len, uint8
 			      uint16_t *resp_len, void *ext_params)
 {
 	if (!mctp_inst || !buf || !resp || !resp_len) {
+		printf("[%s] Pass argument is NULL, \n", __func__);
+		pre_state = current_state;
+		current_state = STATE_IDLE;
 		return PLDM_ERROR;
 	}
 
@@ -241,7 +268,7 @@ static uint8_t request_update(void *mctp_inst, uint8_t *buf, uint16_t len, uint8
 	/* minimum return only completion code */
 	*resp_len = 1;
 
-	if (len < sizeof(struct pldm_request_update_req)) {
+	if (len != (sizeof(struct pldm_request_update_req) + req_p->comp_image_set_ver_str_len)) {
 		resp_p->completion_code = PLDM_ERROR_INVALID_LENGTH;
 		return PLDM_SUCCESS;
 	}
@@ -287,6 +314,9 @@ static uint8_t pass_component_table(void *mctp_inst, uint8_t *buf, uint16_t len,
 				    uint16_t *resp_len, void *ext_params)
 {
 	if (!mctp_inst || !buf || !resp || !resp_len) {
+		printf("[%s] Pass argument is NULL, \n", __func__);
+		pre_state = current_state;
+		current_state = STATE_IDLE;
 		return PLDM_ERROR;
 	}
 
@@ -297,7 +327,7 @@ static uint8_t pass_component_table(void *mctp_inst, uint8_t *buf, uint16_t len,
 	/* minimum return only completion code */
 	*resp_len = 1;
 
-	if (len < sizeof(struct pldm_pass_component_table_req)) {
+	if (len != (sizeof(struct pldm_pass_component_table_req) + req_p->comp_ver_str_len)) {
 		resp_p->completion_code = PLDM_ERROR_INVALID_LENGTH;
 		return PLDM_SUCCESS;
 	}
@@ -359,6 +389,9 @@ static uint8_t update_component(void *mctp_inst, uint8_t *buf, uint16_t len, uin
 				uint16_t *resp_len, void *ext_params)
 {
 	if (!mctp_inst || !buf || !resp || !resp_len) {
+		printf("[%s] Pass argument is NULL, \n", __func__);
+		pre_state = current_state;
+		current_state = STATE_IDLE;
 		return PLDM_ERROR;
 	}
 
@@ -368,7 +401,7 @@ static uint8_t update_component(void *mctp_inst, uint8_t *buf, uint16_t len, uin
 	/* minimum return only completion code */
 	*resp_len = 1;
 
-	if (len < sizeof(struct pldm_update_component_req)) {
+	if (len != (sizeof(struct pldm_update_component_req) + req_p->comp_ver_str_len)) {
 		resp_p->completion_code = PLDM_ERROR_INVALID_LENGTH;
 		return PLDM_SUCCESS;
 	}
@@ -421,10 +454,20 @@ static uint8_t update_component(void *mctp_inst, uint8_t *buf, uint16_t len, uin
 	resp_p->time_before_req_fw_data = UPDATE_THREAD_DELAY_SECOND;
 	*resp_len = sizeof(struct pldm_update_component_resp);
 
+	mctp_ext_params *extra_data = (mctp_ext_params *)malloc(sizeof(mctp_ext_params));
+
+	if (!extra_data) {
+		printf("[%s] malloc fail\n", __func__);
+		resp_p->completion_code = PLDM_ERROR;
+		return PLDM_SUCCESS;
+	}
+
+	memcpy(extra_data, ext_params, sizeof(mctp_ext_params));
+
 	fw_update_tid =
 		k_thread_create(&pldm_fw_update_thread, pldm_fw_update_stack,
 				K_THREAD_STACK_SIZEOF(pldm_fw_update_stack), req_fw_update_handler,
-				mctp_inst, NULL, NULL, CONFIG_MAIN_THREAD_PRIORITY, 0,
+				mctp_inst, extra_data, NULL, CONFIG_MAIN_THREAD_PRIORITY, 0,
 				K_SECONDS(UPDATE_THREAD_DELAY_SECOND));
 	k_thread_name_set(&pldm_fw_update_thread, "pldm_fw_update_thread");
 
@@ -439,6 +482,9 @@ static uint8_t activate_firmware(void *mctp_inst, uint8_t *buf, uint16_t len, ui
 				 uint16_t *resp_len, void *ext_params)
 {
 	if (!mctp_inst || !buf || !resp || !resp_len) {
+		printf("[%s] Pass argument is NULL, \n", __func__);
+		pre_state = current_state;
+		current_state = STATE_IDLE;
 		return PLDM_ERROR;
 	}
 
@@ -482,15 +528,10 @@ static uint8_t activate_firmware(void *mctp_inst, uint8_t *buf, uint16_t len, ui
 }
 
 static pldm_cmd_handler pldm_fw_update_cmd_tbl[] = {
-	//{ PLDM_FW_UPDATE_CMD_CODE_QUERY_DEVICE_IDENTIFIERS, query_device_identifiers },
-	// { PLDM_FW_UPDATE_CMD_CODE_GET_FIRMWARE_PARAMETERS, get_firmware_parameters },
 	{ PLDM_FW_UPDATE_CMD_CODE_REQUEST_UPDATE, request_update },
 	{ PLDM_FW_UPDATE_CMD_CODE_PASS_COMPONENT_TABLE, pass_component_table },
 	{ PLDM_FW_UPDATE_CMD_CODE_UPDATE_COMPONENT, update_component },
 	{ PLDM_FW_UPDATE_CMD_CODE_ACTIVE_FIRMWARE, activate_firmware },
-	// { PLDM_FW_UPDATE_CMD_CODE_GET_STATUS, get_status },
-	// { PLDM_FW_UPDATE_CMD_CODE_CANCEL_UPDATE_COMPONENT, cancel_update_component },
-	// { PLDM_FW_UPDATE_CMD_CODE_CANCEL_UPDATE, canel_update },
 };
 
 uint8_t pldm_fw_update_handler_query(uint8_t code, void **ret_fn)
@@ -500,24 +541,6 @@ uint8_t pldm_fw_update_handler_query(uint8_t code, void **ret_fn)
 	}
 
 	pldm_cmd_proc_fn fn = NULL;
-	// uint8_t i, j;
-
-	// for (i = 0; i < ARRAY_SIZE(pldm_fw_update_cmd_tbl); i++) {
-	// 	if (pldm_fw_update_cmd_tbl[i].cmd_code == code) {
-	// 		/* Filter out command if it shouldn't show up at current state */
-	// 		for (j = 0; j < ARRAY_SIZE(fd_stat_machine); j++) {
-	// 			if (fd_stat_machine[j].cmd == code &&
-	// 			    fd_stat_machine[j].cur_stat == cur_state) {
-	// 				fn = pldm_fw_update_cmd_tbl[i].fn;
-	// 				break;
-	// 			}
-	// 		}
-	// 		if (j == ARRAY_SIZE(fd_stat_machine))
-	// 			LOG_ERR("%s: Command 0x%x should not process in current state %d\n",
-	// 				__func__, code, cur_state);
-	// 		break;
-	// 	}
-	// }
 
 	for (int i = 0; i < ARRAY_SIZE(pldm_fw_update_cmd_tbl); i++) {
 		if (pldm_fw_update_cmd_tbl[i].cmd_code == code) {

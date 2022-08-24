@@ -242,7 +242,7 @@ struct pldm_apply_complete_req {
 
 uint8_t pldm_fw_update_handler_query(uint8_t code, void **ret_fn);
 uint16_t pldm_fw_update_read(void *mctp_p, enum pldm_firmware_update_commands cmd, uint8_t *req,
-			     uint16_t req_len, uint8_t *rbuf, uint16_t rbuf_len);
+			     uint16_t req_len, uint8_t *rbuf, uint16_t rbuf_len, void *ext_params);
 
 #ifdef __cplusplus
 }
