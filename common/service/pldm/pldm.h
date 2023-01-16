@@ -32,7 +32,8 @@ extern "C" {
 
 #define PLDM_MAX_DATA_SIZE 256
 
-typedef uint8_t (*pldm_cmd_proc_fn)(void *, uint8_t *, uint16_t, uint8_t *, uint16_t *, void *);
+typedef uint8_t (*pldm_cmd_proc_fn)(const void *, uint8_t *, uint16_t, uint8_t *, uint16_t *,
+				    void *);
 
 typedef enum {
 	PLDM_TYPE_BASE = 0x00,
@@ -134,9 +135,9 @@ struct pldm_get_firmware_parameters_resp {
 uint8_t mctp_pldm_cmd_handler(void *mctp_p, uint8_t *buf, uint32_t len, mctp_ext_params ext_params);
 
 /* send the pldm command message through mctp */
-uint8_t mctp_pldm_send_msg(void *mctp_p, pldm_msg *msg);
+uint8_t mctp_pldm_send_msg(const void *mctp_p, pldm_msg *msg);
 
-uint16_t mctp_pldm_read(void *mctp_p, pldm_msg *msg, uint8_t *rbuf, uint16_t rbuf_len);
+uint16_t mctp_pldm_read(const void *mctp_p, pldm_msg *msg, uint8_t *rbuf, uint16_t rbuf_len);
 
 pldm_t *pldm_init(void *interface, uint8_t user_idx);
 

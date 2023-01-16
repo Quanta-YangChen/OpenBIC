@@ -99,7 +99,7 @@ static void pldm_read_timeout_handler(void *args)
 /*
  * The return value is the read length from PLDM device
  */
-uint16_t mctp_pldm_read(void *mctp_p, pldm_msg *msg, uint8_t *rbuf, uint16_t rbuf_len)
+uint16_t mctp_pldm_read(const void *mctp_p, pldm_msg *msg, uint8_t *rbuf, uint16_t rbuf_len)
 {
 	if (!mctp_p || !msg || !rbuf || !rbuf_len)
 		return 0;
@@ -148,8 +148,8 @@ static uint8_t pldm_msg_timeout_check(sys_slist_t *list, struct k_mutex *mutex)
 		return MCTP_ERROR;
 	}
 
-	sys_snode_t *node;
-	sys_snode_t *s_node;
+	sys_snode_t *node = NULL;
+	sys_snode_t *s_node = NULL;
 	sys_snode_t *pre_node = NULL;
 	int64_t cur_uptime = k_uptime_get();
 
@@ -194,8 +194,8 @@ static uint8_t pldm_resp_msg_process(mctp *mctp_inst, uint8_t *buf, uint32_t len
 		return PLDM_ERROR;
 
 	pldm_hdr *hdr = (pldm_hdr *)buf;
-	sys_snode_t *node;
-	sys_snode_t *s_node;
+	sys_snode_t *node = NULL;
+	sys_snode_t *s_node = NULL;
 	sys_snode_t *pre_node = NULL;
 	sys_snode_t *found_node = NULL;
 
@@ -285,9 +285,8 @@ uint8_t mctp_pldm_cmd_handler(void *mctp_p, uint8_t *buf, uint32_t len, mctp_ext
 		goto send_msg;
 	}
 
-	uint8_t rc = PLDM_ERROR;
 	/* found the proper cmd handler in the pldm_type_cmd table */
-	rc = handler_query(hdr->cmd, (void **)&handler);
+	uint8_t rc = handler_query(hdr->cmd, (void **)&handler);
 	if (rc == PLDM_ERROR || !handler) {
 		*comp = PLDM_ERROR_UNSUPPORTED_PLDM_CMD;
 		goto send_msg;
@@ -305,7 +304,7 @@ send_msg:
 	return mctp_send_msg(mctp_inst, resp_buf, resp_len, ext_params);
 }
 
-uint8_t mctp_pldm_send_msg(void *mctp_p, pldm_msg *msg)
+uint8_t mctp_pldm_send_msg(const void *mctp_p, pldm_msg *msg)
 {
 	if (!mctp_p || !msg)
 		return PLDM_ERROR;

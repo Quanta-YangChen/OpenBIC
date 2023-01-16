@@ -49,7 +49,7 @@ uint8_t set_iana(uint8_t *buf, uint8_t buf_len)
 	return PLDM_SUCCESS;
 }
 
-static uint8_t cmd_echo(void *mctp_inst, uint8_t *buf, uint16_t len, uint8_t *resp,
+static uint8_t cmd_echo(const void *mctp_inst, uint8_t *buf, uint16_t len, uint8_t *resp,
 			uint16_t *resp_len, void *ext_params)
 {
 	if (!mctp_inst || !buf || !resp || !resp_len)
@@ -70,7 +70,7 @@ static uint8_t cmd_echo(void *mctp_inst, uint8_t *buf, uint16_t len, uint8_t *re
 	return PLDM_SUCCESS;
 }
 
-static uint8_t ipmi_cmd(void *mctp_inst, uint8_t *buf, uint16_t len, uint8_t *resp,
+static uint8_t ipmi_cmd(const void *mctp_inst, uint8_t *buf, uint16_t len, uint8_t *resp,
 			uint16_t *resp_len, void *ext_params)
 {
 	if (!mctp_inst || !buf || !resp || !resp_len || !ext_params)

@@ -65,7 +65,7 @@ static uint8_t get_sensor_data_size(pldm_sensor_readings_data_type_t data_type)
 	}
 }
 
-uint8_t pldm_get_sensor_reading(void *mctp_inst, uint8_t *buf, uint16_t len, uint8_t *resp,
+uint8_t pldm_get_sensor_reading(const void *mctp_inst, uint8_t *buf, uint16_t len, uint8_t *resp,
 				uint16_t *resp_len, void *ext_params)
 {
 	if (!mctp_inst || !buf || !resp || !resp_len)
@@ -141,7 +141,7 @@ ret:
 	return PLDM_SUCCESS;
 }
 
-uint16_t pldm_platform_monitor_read(void *mctp_inst, mctp_ext_params ext_params,
+uint16_t pldm_platform_monitor_read(const void *mctp_inst, mctp_ext_params ext_params,
 				    pldm_platform_monitor_commands_t cmd, uint8_t *req,
 				    uint16_t req_len, uint8_t *rbuf, uint16_t rbuf_len)
 {
@@ -198,7 +198,7 @@ static uint8_t pldm_encode_sensor_event_data(struct pldm_sensor_event_data *sens
 	return PLDM_SUCCESS;
 }
 
-static uint8_t pldm_send_sensor_event_message(void *mctp_inst, mctp_ext_params ext_params,
+static uint8_t pldm_send_sensor_event_message(const void *mctp_inst, mctp_ext_params ext_params,
 					      uint16_t sensor_id,
 					      pldm_sensor_event_class_t sensor_event_class,
 					      const uint8_t *sensor_event_data,
@@ -220,7 +220,7 @@ static uint8_t pldm_send_sensor_event_message(void *mctp_inst, mctp_ext_params e
 		sizeof(struct pldm_sensor_event_data) + event_data_length - 1);
 }
 
-static uint8_t pldm_send_effecter_event_message(void *mctp_inst, mctp_ext_params ext_params,
+static uint8_t pldm_send_effecter_event_message(const void *mctp_inst, mctp_ext_params ext_params,
 						uint16_t effecter_id,
 						pldm_effecter_event_class_t effecter_event_class,
 						const uint8_t *effecter_event_data,
@@ -249,7 +249,7 @@ static uint8_t pldm_send_effecter_event_message(void *mctp_inst, mctp_ext_params
 		sizeof(struct pldm_effecter_event_data) + event_data_length - 1);
 }
 
-uint8_t pldm_platform_event_message_req(void *mctp_inst, mctp_ext_params ext_params,
+uint8_t pldm_platform_event_message_req(const void *mctp_inst, mctp_ext_params ext_params,
 					uint8_t event_class, const uint8_t *event_data,
 					uint8_t event_data_length)
 {
@@ -380,7 +380,7 @@ uint8_t pldm_send_platform_event(uint8_t event_class, uint16_t id, uint8_t ext_c
 	}
 }
 
-uint8_t pldm_set_event_receiver(void *mctp_inst, uint8_t *buf, uint16_t len, uint8_t *resp,
+uint8_t pldm_set_event_receiver(const void *mctp_inst, uint8_t *buf, uint16_t len, uint8_t *resp,
 				uint16_t *resp_len, void *ext_params)
 {
 	CHECK_NULL_ARG_WITH_RETURN(mctp_inst, PLDM_ERROR);
@@ -499,8 +499,8 @@ static void oem_set_effecter_type_gpio_handler(uint8_t *buf, uint16_t len, uint8
 	}
 }
 
-uint8_t pldm_set_state_effecter_states(void *mctp_inst, uint8_t *buf, uint16_t len, uint8_t *resp,
-				       uint16_t *resp_len, void *ext_params)
+uint8_t pldm_set_state_effecter_states(const void *mctp_inst, uint8_t *buf, uint16_t len,
+				       uint8_t *resp, uint16_t *resp_len, void *ext_params)
 {
 	CHECK_NULL_ARG_WITH_RETURN(mctp_inst, PLDM_ERROR);
 	CHECK_NULL_ARG_WITH_RETURN(buf, PLDM_ERROR);
@@ -589,8 +589,8 @@ static void oem_get_effecter_type_gpio_handler(uint8_t *buf, uint16_t len, uint8
 	res_p->completion_code = PLDM_SUCCESS;
 }
 
-uint8_t pldm_get_state_effecter_states(void *mctp_inst, uint8_t *buf, uint16_t len, uint8_t *resp,
-				       uint16_t *resp_len, void *ext_params)
+uint8_t pldm_get_state_effecter_states(const void *mctp_inst, uint8_t *buf, uint16_t len,
+				       uint8_t *resp, uint16_t *resp_len, void *ext_params)
 {
 	CHECK_NULL_ARG_WITH_RETURN(mctp_inst, PLDM_ERROR);
 	CHECK_NULL_ARG_WITH_RETURN(buf, PLDM_ERROR);

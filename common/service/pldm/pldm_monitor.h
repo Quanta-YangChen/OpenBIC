@@ -291,11 +291,11 @@ struct pldm_get_state_effecter_states_resp {
 
 uint8_t pldm_monitor_handler_query(uint8_t code, void **ret_fn);
 
-uint8_t pldm_platform_event_message_req(void *mctp_inst, mctp_ext_params ext_params,
+uint8_t pldm_platform_event_message_req(const void *mctp_inst, mctp_ext_params ext_params,
 					uint8_t event_class, const uint8_t *event_data,
 					uint8_t event_data_length);
 
-uint16_t pldm_platform_monitor_read(void *mctp_inst, mctp_ext_params ext_params,
+uint16_t pldm_platform_monitor_read(const void *mctp_inst, mctp_ext_params ext_params,
 				    pldm_platform_monitor_commands_t cmd, uint8_t *req,
 				    uint16_t req_len, uint8_t *rbuf, uint16_t rbuf_len);
 
