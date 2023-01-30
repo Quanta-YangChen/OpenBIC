@@ -1343,7 +1343,8 @@ void pal_extend_sensor_config()
 {
 	uint8_t stage = get_stage_by_rev_id();
 
-	if (stage == EVT) {
+	switch (stage) {
+	case GT_STAGE_EVT:
 		LOG_INF("The board is in EVT stage");
 		memcpy(&sensor_config[sensor_config_count], evt_pex_sensor_config_table,
 		       ARRAY_SIZE(evt_pex_sensor_config_table) * sizeof(sensor_cfg));
@@ -1390,7 +1391,9 @@ void pal_extend_sensor_config()
 			LOG_ERR("Unsupported VR type");
 			break;
 		}
-	} else if (stage == DVT) {
+		break;
+	case GT_STAGE_DVT:
+	case GT_STAGE_PVT:
 		LOG_INF("The board is in DVT stage");
 		memcpy(&sensor_config[sensor_config_count], dvt_pex_sensor_config_table,
 		       ARRAY_SIZE(dvt_pex_sensor_config_table) * sizeof(sensor_cfg));
@@ -1399,8 +1402,17 @@ void pal_extend_sensor_config()
 		load_vr_sensor_table();
 		load_power_ic_sensor_table();
 		change_p1v8_sensor_i2c_addr();
-	} else {
-		LOG_ERR("Unsupport stage, (%d)", stage);
+		break;
+	default:
+		LOG_ERR("Unsupport stage, (%d). Load configuration as PVT.", stage);
+		memcpy(&sensor_config[sensor_config_count], dvt_pex_sensor_config_table,
+		       ARRAY_SIZE(dvt_pex_sensor_config_table) * sizeof(sensor_cfg));
+		sensor_config_count += ARRAY_SIZE(dvt_pex_sensor_config_table);
+		load_hsc_sensor_table();
+		load_vr_sensor_table();
+		load_power_ic_sensor_table();
+		change_p1v8_sensor_i2c_addr();
+		break;
 	}
 }
 
@@ -1409,7 +1421,8 @@ uint8_t pal_get_extend_sensor_config()
 	uint8_t extend_sensor_config_size = 0;
 	uint8_t stage = get_stage_by_rev_id();
 
-	if (stage == EVT) {
+	switch (stage) {
+	case GT_STAGE_EVT:
 		extend_sensor_config_size += ARRAY_SIZE(evt_pex_sensor_config_table);
 		switch (check_vr_type()) {
 		case VR_RNS_ISL69259:
@@ -1428,14 +1441,23 @@ uint8_t pal_get_extend_sensor_config()
 			LOG_ERR("Unsupported VR type");
 			break;
 		}
-	} else if (stage == DVT) {
+		break;
+	case GT_STAGE_DVT:
+	case GT_STAGE_PVT:
 		extend_sensor_config_size += ARRAY_SIZE(dvt_pex_sensor_config_table);
 		extend_sensor_config_size += ARRAY_SIZE(mp5990_hsc_sensor_config_table);
 		extend_sensor_config_size += ARRAY_SIZE(isl69259_vr_sensor_config_table);
 		extend_sensor_config_size += ARRAY_SIZE(isl28022_power_monitor_sensor_config_table);
-	} else {
-		LOG_ERR("Unsupport stage, (%d)", stage);
+		break;
+	default:
+		LOG_ERR("Unsupport stage, (%d). Add sensor configuration size as PVT.", stage);
+		extend_sensor_config_size += ARRAY_SIZE(dvt_pex_sensor_config_table);
+		extend_sensor_config_size += ARRAY_SIZE(mp5990_hsc_sensor_config_table);
+		extend_sensor_config_size += ARRAY_SIZE(isl69259_vr_sensor_config_table);
+		extend_sensor_config_size += ARRAY_SIZE(isl28022_power_monitor_sensor_config_table);
+		break;
 	}
+
 	return extend_sensor_config_size;
 }
 

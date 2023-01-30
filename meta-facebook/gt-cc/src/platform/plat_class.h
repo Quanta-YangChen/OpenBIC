@@ -28,10 +28,10 @@ enum GT_COMPONENT_TYPE_ADC_CHANNEL {
 };
 
 typedef enum {
-	EVT = 1,
-	EVT2 = 2,
-	DVT = 3,
-	DVT2 = 4,
+	GT_STAGE_EVT = 1,
+	GT_STAGE_EVT2 = 2,
+	GT_STAGE_DVT = 3,
+	GT_STAGE_PVT = 4,
 } GT_STAGE_REVISION_ID;
 
 bool get_adc_voltage(int channel, float *voltage);
