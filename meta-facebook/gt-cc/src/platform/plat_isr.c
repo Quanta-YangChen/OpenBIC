@@ -32,6 +32,7 @@
 #include "plat_mctp.h"
 #include "plat_hook.h"
 #include "plat_pldm_monitor.h"
+#include "plat_led.h"
 
 LOG_MODULE_REGISTER(plat_isr);
 
@@ -102,6 +103,7 @@ void ISR_DC_ON()
 		k_work_schedule(&dc_on_send_cmd_to_dev_work, K_SECONDS(DC_ON_5_SECOND));
 		k_work_schedule(&dc_on_init_pex_work, K_SECONDS(DC_ON_5_SECOND));
 	}
+	pwr_led_check();
 }
 
 void ISR_NIC_ADC_ALERT()
@@ -123,16 +125,19 @@ void ISR_NIC_ADC_ALERT()
 				     sizeof(struct pldm_sensor_event_state_sensor_state))) {
 		LOG_ERR("Send NIC ADC alert event log failed");
 	}
+	light_fault_led_check();
 }
 
 void ISR_SSD_0_7_ADC_ALERT()
 {
 	ssd_alert_check(0);
+	light_fault_led_check();
 }
 
 void ISR_SSD_8_15_ADC_ALERT()
 {
 	ssd_alert_check(1);
+	light_fault_led_check();
 }
 
 void ISR_PEX_ADC_ALERT()
@@ -154,6 +159,7 @@ void ISR_PEX_ADC_ALERT()
 				     sizeof(struct pldm_sensor_event_state_sensor_state))) {
 		LOG_ERR("Send PEX ADC alert event log failed");
 	}
+	light_fault_led_check();
 }
 
 void ISR_SMB_FPGA_ALERT()
@@ -175,6 +181,7 @@ void ISR_SMB_FPGA_ALERT()
 				     sizeof(struct pldm_sensor_event_state_sensor_state))) {
 		LOG_ERR("Send FPGA SMB alert event log failed");
 	}
+	light_fault_led_check();
 }
 
 void ISR_VR_PMBUS_ALERT()
@@ -196,6 +203,7 @@ void ISR_VR_PMBUS_ALERT()
 				     sizeof(struct pldm_sensor_event_state_sensor_state))) {
 		LOG_ERR("Send VR PMBUS alert event log failed");
 	}
+	light_fault_led_check();
 }
 
 void ISR_HSC_SMB_ALERT()
@@ -217,6 +225,7 @@ void ISR_HSC_SMB_ALERT()
 				     sizeof(struct pldm_sensor_event_state_sensor_state))) {
 		LOG_ERR("Send HSC SMB alert event log failed");
 	}
+	light_fault_led_check();
 }
 
 #define ISR_SSD_PRESENT_HANDLER(idx)                                                               \
