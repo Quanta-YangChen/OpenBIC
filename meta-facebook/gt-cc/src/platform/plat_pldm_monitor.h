@@ -76,11 +76,18 @@ enum plat_pldm_device_state_set_offset {
 	PLDM_STATE_SET_OFFSET_DEVICE_STATUS = 1,
 };
 
-enum plat_pldm_state_set_device_presense {
-	PLDM_STATE_SET_DEVICE_PRESENT = 1,
-	PLDM_STATE_SET_DEVICE_NOT_PRESENT = 2,
-	PLDM_STATE_SET_DEVICE_PLUG_IN = 3,
-	PLDM_STATE_SET_DEVICE_PLUG_OUT = 4,
+#define PLDM_PLATFORM_OEM_LED_EFFECTER_STATE_FIELD_COUNT 1
+
+enum plat_effecter_states_set_led_value {
+	EFFECTER_STATE_LED_VALUE_UNKNOWN = 0x00,
+	EFFECTER_STATE_LED_VALUE_ON = 0x01,
+	EFFECTER_STATE_LED_VALUE_OFF = 0x02,
+	EFFECTER_STATE_LED_VALUE_MAX,
+};
+
+enum plat_pldm_effecter_id {
+	PLAT_EFFECTER_ID_POWER_LED = 0x00,
+	PLAT_EFFECTER_ID_FAULT_LED = 0x01,
 };
 
 void ssd_alert_check(uint8_t group);
