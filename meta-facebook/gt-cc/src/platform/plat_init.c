@@ -32,6 +32,8 @@ SCU_CFG scu_cfg[] = {
 	{ 0x7e6e2618, 0x00FF0000 },
 };
 
+struct k_timer bmc_monitor_timer;
+
 void pal_pre_init()
 {
 	/* init i2c target */
@@ -58,6 +60,8 @@ void pal_post_init()
 	gpio_set(BIC_SYS_READY_N, GPIO_LOW);
 
 	sys_led_init_and_check();
+	k_timer_init(&bmc_monitor_timer, reset_bmc_handler, NULL);
+	k_timer_start(&bmc_monitor_timer, K_SECONDS(10), K_SECONDS(10));
 }
 
 void pal_set_sys_status()

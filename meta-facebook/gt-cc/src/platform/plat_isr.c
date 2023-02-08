@@ -33,6 +33,7 @@
 #include "plat_hook.h"
 #include "plat_pldm_monitor.h"
 #include "plat_led.h"
+#include "plat_class.h"
 
 LOG_MODULE_REGISTER(plat_isr);
 
@@ -133,6 +134,19 @@ void ISR_SSD_0_7_ADC_ALERT()
 	ssd_alert_check(0);
 }
 
+extern struct k_timer bmc_monitor_timer;
+
+void ISR_MB_BIC_MON()
+{
+	LOG_INF("== time = %d", k_uptime_get_32());
+
+	if (k_timer_remaining_ticks(&bmc_monitor_timer) > 0) {
+		LOG_INF("!!! Stop timer !!!");
+		k_timer_stop(&bmc_monitor_timer);
+	}
+
+	k_timer_start(&bmc_monitor_timer, K_SECONDS(10), K_SECONDS(10));
+}
 void ISR_SSD_8_15_ADC_ALERT()
 {
 	ssd_alert_check(1);

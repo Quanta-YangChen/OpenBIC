@@ -210,3 +210,8 @@ void init_platform_config()
 	init_platform_vr_config();
 	init_platform_power_ic_config();
 }
+
+void reset_bmc_handler(struct k_timer *timer)
+{
+	LOG_INF("test timer-----time = %d", k_uptime_get_32());
+}

@@ -60,5 +60,6 @@ uint8_t get_hsc_type();
 uint8_t get_vr_type();
 uint8_t get_power_moniter_ic_type();
 void init_platform_config();
+void reset_bmc_handler(struct k_timer *timer);
 
 #endif
