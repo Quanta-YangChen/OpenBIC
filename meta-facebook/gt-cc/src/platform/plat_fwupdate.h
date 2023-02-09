@@ -22,15 +22,22 @@
 #include "plat_ipmi.h"
 #include "pldm_firmware_update.h"
 
-enum { COMP_ID_BIC = GLOBAL_COMP_ID_BIC,
-       COMP_ID_VR0,
-       COMP_ID_VR1,
-       COMP_ID_PEX0,
-       COMP_ID_PEX1,
-       COMP_ID_PEX2,
-       COMP_ID_PEX3,
-       COMP_ID_CPLD,
-       COMP_ID_MAX,
+enum {
+	COMP_ID_BIC = GLOBAL_COMP_ID_BIC,
+	COMP_ID_VR0,
+	COMP_ID_VR1,
+	COMP_ID_PEX0,
+	COMP_ID_PEX1,
+	COMP_ID_PEX2,
+	COMP_ID_PEX3,
+	COMP_ID_CPLD,
+	COMP_ID_MAX,
+};
+
+enum oem_pldm_fw_update_get_fw_version_completion_codes {
+	PLDM_FW_UPDATE_GET_VERSION_CC_NOT_POWER_ON = 0x80,
+	PLDM_FW_UPDATE_GET_VERSION_CC_ACCESS_FAIL = 0x81,
+
 };
 
 void load_pldmupdate_comp_config(void);

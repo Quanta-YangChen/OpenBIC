@@ -53,6 +53,9 @@ enum pldm_firmware_update_commands {
 	PLDM_FW_UPDATE_CMD_CODE_GET_STATUS = 0x1B,
 	PLDM_FW_UPDATE_CMD_CODE_CANCEL_UPDATE_COMPONENT = 0x1C,
 	PLDM_FW_UPDATE_CMD_CODE_CANCEL_UPDATE = 0x1D,
+
+	/* OEM define command */
+	OEM_PLDM_FW_UPDATE_CMD_CODE_GET_FW_VERSION = 0x30,
 };
 
 /**
@@ -107,22 +110,23 @@ enum pldm_firmware_update_aux_state {
 /**
  * PLDM component classification
  */
-enum { COMP_CLASS_TYPE_UNKNOWN = 0x0000,
-       COMP_CLASS_TYPE_OTHER,
-       COMP_CLASS_TYPE_DRIVER,
-       COMP_CLASS_TYPE_CFG_SW,
-       COMP_CLASS_TYPE_APP_SW,
-       COMP_CLASS_TYPE_INSTR,
-       COMP_CLASS_TYPE_FW_BIOS,
-       COMP_CLASS_TYPE_DIAG_SW,
-       COMP_CLASS_TYPE_OS,
-       COMP_CLASS_TYPE_MW,
-       COMP_CLASS_TYPE_FW,
-       COMP_CLASS_TYPE_BIOS_FC,
-       COMP_CLASS_TYPE_SP_SV_P,
-       COMP_CLASS_TYPE_SW_BUNDLE,
-       COMP_CLASS_TYPE_DOWNSTREAM = 0xFFFF,
-       COMP_CLASS_TYPE_MAX = 0x10000,
+enum {
+	COMP_CLASS_TYPE_UNKNOWN = 0x0000,
+	COMP_CLASS_TYPE_OTHER,
+	COMP_CLASS_TYPE_DRIVER,
+	COMP_CLASS_TYPE_CFG_SW,
+	COMP_CLASS_TYPE_APP_SW,
+	COMP_CLASS_TYPE_INSTR,
+	COMP_CLASS_TYPE_FW_BIOS,
+	COMP_CLASS_TYPE_DIAG_SW,
+	COMP_CLASS_TYPE_OS,
+	COMP_CLASS_TYPE_MW,
+	COMP_CLASS_TYPE_FW,
+	COMP_CLASS_TYPE_BIOS_FC,
+	COMP_CLASS_TYPE_SP_SV_P,
+	COMP_CLASS_TYPE_SW_BUNDLE,
+	COMP_CLASS_TYPE_DOWNSTREAM = 0xFFFF,
+	COMP_CLASS_TYPE_MAX = 0x10000,
 };
 
 /** 
@@ -369,6 +373,16 @@ struct pldm_cancel_update_resp {
 } __attribute__((packed));
 
 /**
+ * Structure representing GET_FW_VERSION response
+ */
+struct oem_pldm_get_comp_fw_version_resp {
+	uint8_t completion_code;
+	uint8_t component_id;
+	uint8_t length;
+	uint8_t fw_version[1];
+} __attribute__((packed));
+
+/**
  * SelfContainedActivationRequest in the request of ActivateFirmware
  */
 enum pldm_self_contained_activation_req {
@@ -399,6 +413,8 @@ uint8_t pldm_bic_update(void *fw_update_param);
 uint8_t pldm_vr_update(void *fw_update_param);
 uint8_t pldm_cpld_update(void *fw_update_param);
 uint8_t pldm_bic_activate(void *arg);
+uint8_t get_component_fw_version(void *mctp_inst, uint8_t *buf, uint16_t len, uint8_t instance_id,
+				 uint8_t *resp, uint16_t *resp_len, void *ext_params);
 
 #ifdef __cplusplus
 }

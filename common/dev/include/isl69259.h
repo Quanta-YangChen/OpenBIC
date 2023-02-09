@@ -23,5 +23,7 @@
 #define ADJUST_IOUT_RANGE 2
 
 bool isl69259_fwupdate(uint8_t bus, uint8_t addr, uint8_t *hex_buff);
+bool get_raa_hex_mode(uint8_t bus, uint8_t addr, uint8_t *mode);
+bool get_raa_crc(uint8_t bus, uint8_t addr, uint8_t mode, uint32_t *crc);
 
 #endif

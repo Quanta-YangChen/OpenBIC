@@ -48,12 +48,14 @@ LOG_MODULE_REGISTER(xdpe12284c);
 
 #define MAX_CMD_LINE 1080
 
-enum { VR12 = 1,
-       VR13,
-       IMVP9,
+enum {
+	VR12 = 1,
+	VR13,
+	IMVP9,
 };
 
-enum { VID_IDENTIFIER = 1,
+enum {
+	VID_IDENTIFIER = 1,
 };
 
 struct xdpe_config {
@@ -99,14 +101,14 @@ bool xdpe12284c_get_checksum(uint8_t bus, uint8_t target_addr, uint8_t *checksum
 	//Read lower word for the 32bit checksum value
 	i2c_msg.tx_len = 1;
 	i2c_msg.rx_len = 2;
-	i2c_msg.data[0] = VR_XDPE_REG_CRC_H;
+	i2c_msg.data[0] = VR_XDPE_REG_CRC_L;
 	if (i2c_master_read(&i2c_msg, retry)) {
-		LOG_ERR("Failed to read register 0x%02X", VR_XDPE_REG_CRC_H);
+		LOG_ERR("Failed to read register 0x%02X", VR_XDPE_REG_CRC_L);
 		return false;
 	}
 
-	checksum[0] = i2c_msg.data[1];
-	checksum[1] = i2c_msg.data[0];
+	checksum[0] = i2c_msg.data[0];
+	checksum[1] = i2c_msg.data[1];
 
 	if (set_page(bus, target_addr, VR_XDPE_PAGE_62) == false)
 		return false;
@@ -114,14 +116,14 @@ bool xdpe12284c_get_checksum(uint8_t bus, uint8_t target_addr, uint8_t *checksum
 	//Read higher word for the 32bit checksum value
 	i2c_msg.tx_len = 1;
 	i2c_msg.rx_len = 2;
-	i2c_msg.data[0] = VR_XDPE_REG_CRC_L;
+	i2c_msg.data[0] = VR_XDPE_REG_CRC_H;
 	if (i2c_master_read(&i2c_msg, retry)) {
-		LOG_ERR("Failed to read register 0x%02X", VR_XDPE_REG_CRC_L);
+		LOG_ERR("Failed to read register 0x%02X", VR_XDPE_REG_CRC_H);
 		return false;
 	}
 
-	checksum[2] = i2c_msg.data[1];
-	checksum[3] = i2c_msg.data[0];
+	checksum[2] = i2c_msg.data[0];
+	checksum[3] = i2c_msg.data[1];
 
 	return true;
 }

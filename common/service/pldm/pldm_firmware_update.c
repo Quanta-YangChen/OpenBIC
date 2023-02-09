@@ -880,6 +880,22 @@ exit:
 	return PLDM_SUCCESS;
 }
 
+__weak uint8_t plat_get_component_fw_version(void *mctp_inst, uint8_t *buf, uint16_t len,
+					     uint8_t instance_id, uint8_t *resp, uint16_t *resp_len,
+					     void *ext_params)
+{
+	CHECK_NULL_ARG_WITH_RETURN(mctp_inst, PLDM_ERROR);
+	CHECK_NULL_ARG_WITH_RETURN(buf, PLDM_ERROR);
+	CHECK_NULL_ARG_WITH_RETURN(resp, PLDM_ERROR);
+	CHECK_NULL_ARG_WITH_RETURN(resp_len, PLDM_ERROR);
+	CHECK_NULL_ARG_WITH_RETURN(ext_params, PLDM_ERROR);
+	*resp_len = 1;
+	*resp = PLDM_ERROR_UNSUPPORTED_PLDM_CMD;
+
+	LOG_WRN("Not implemented in platform code");
+	return PLDM_SUCCESS;
+}
+
 static pldm_cmd_handler pldm_fw_update_cmd_tbl[] = {
 	{ PLDM_FW_UPDATE_CMD_CODE_REQUEST_UPDATE, request_update },
 	{ PLDM_FW_UPDATE_CMD_CODE_PASS_COMPONENT_TABLE, pass_component_table },
@@ -887,6 +903,7 @@ static pldm_cmd_handler pldm_fw_update_cmd_tbl[] = {
 	{ PLDM_FW_UPDATE_CMD_CODE_ACTIVE_FIRMWARE, activate_firmware },
 	{ PLDM_FW_UPDATE_CMD_CODE_GET_STATUS, get_status },
 	{ PLDM_FW_UPDATE_CMD_CODE_CANCEL_UPDATE, cancel_update },
+	{ OEM_PLDM_FW_UPDATE_CMD_CODE_GET_FW_VERSION, plat_get_component_fw_version },
 };
 
 uint8_t pldm_fw_update_handler_query(uint8_t code, void **ret_fn)
