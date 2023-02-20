@@ -987,6 +987,7 @@ static uint8_t get_firmware_parameter(void *mctp_inst, uint8_t *buf, uint16_t le
 
 	*resp_len = sizeof(struct pldm_get_firmware_parameters_resp) + cnt_len;
 
+	LOG_INF("*resp_len = %d", *resp_len);
 	return PLDM_SUCCESS;
 }
 
