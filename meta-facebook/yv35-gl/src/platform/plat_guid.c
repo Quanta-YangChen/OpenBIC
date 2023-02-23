@@ -60,7 +60,7 @@ uint8_t get_system_guid(uint16_t *data_len, uint8_t *data)
 	return status;
 }
 
-uint8_t set_system_guid(const uint16_t *data_len, uint8_t *data)
+uint8_t set_system_guid(uint16_t *data_len, uint8_t *data)
 {
 	EEPROM_ENTRY guid_entry;
 
