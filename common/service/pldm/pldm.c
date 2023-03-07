@@ -283,7 +283,7 @@ uint8_t mctp_pldm_cmd_handler(void *mctp_p, uint8_t *buf, uint32_t len, mctp_ext
 
 	if (!handler_query) {
 		*comp = PLDM_ERROR_UNSUPPORTED_PLDM_CMD;
-		goto send_msg;
+		return mctp_send_msg(mctp_inst, resp_buf, resp_len, ext_params);
 	}
 
 	uint8_t rc = PLDM_ERROR;
@@ -291,11 +291,14 @@ uint8_t mctp_pldm_cmd_handler(void *mctp_p, uint8_t *buf, uint32_t len, mctp_ext
 	rc = handler_query(hdr->cmd, (void **)&handler);
 	if (rc == PLDM_ERROR || !handler) {
 		*comp = PLDM_ERROR_UNSUPPORTED_PLDM_CMD;
-		goto send_msg;
+		return mctp_send_msg(mctp_inst, resp_buf, resp_len, ext_params);
 	}
 
-	rc = handler(mctp_inst, buf + sizeof(*hdr), len - sizeof(*hdr), (hdr->req_d_id) & 0x1F,
+	if (handler) {
+		rc = handler(mctp_inst, buf + sizeof(*hdr), len - sizeof(*hdr), (hdr->req_d_id) & 0x1F,
 		     resp_buf + sizeof(*hdr), &resp_len, &ext_params);
+	}
+
 	if (rc == PLDM_LATER_RESP)
 		return PLDM_SUCCESS;
 

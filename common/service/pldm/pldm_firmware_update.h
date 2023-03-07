@@ -266,6 +266,7 @@ typedef struct pldm_fw_update_info {
 	uint16_t activate_method;
 	pldm_act_func self_act_func;
 	pldm_get_fw_version_fn get_fw_version_fn;
+	uint8_t *pending_version_p;
 } pldm_fw_update_info_t;
 extern pldm_fw_update_info_t *comp_config;
 extern uint8_t comp_config_count;

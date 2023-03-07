@@ -529,3 +529,11 @@ post_hook_and_ret:
 
 	return ret;
 }
+
+void clear_pending_version(uint8_t activate_method)
+{
+	for (uint8_t i = 0; i < comp_config_count; i++) {
+		if (comp_config[i].activate_method == activate_method)
+			SAFE_FREE(comp_config[i].pending_version_p);
+	}
+}

@@ -242,6 +242,21 @@ static uint8_t do_self_activate(uint16_t comp_id)
 			}
 			break;
 		}
+
+		if (comp_config[idx].activate_method == COMP_ACT_AC_PWR_CYCLE ||
+		    comp_config[idx].activate_method == COMP_ACT_DC_PWR_CYCLE) {
+			SAFE_FREE(comp_config[idx].pending_version_p);
+			uint8_t len = strlen(cur_update_comp_str);
+			comp_config[idx].pending_version_p = (uint8_t *)malloc(len + 1);
+
+			if (!comp_config[idx].pending_version_p) {
+				LOG_ERR("component identifier %d malloc failed",
+					comp_config[idx].comp_identifier);
+				continue;
+			}
+			memcpy(comp_config[idx].pending_version_p, cur_update_comp_str, len);
+			comp_config[idx].pending_version_p[len] = '\0';
+		}
 	}
 
 	return 0;
@@ -961,6 +976,15 @@ static uint8_t get_firmware_parameter(void *mctp_inst, uint8_t *buf, uint16_t le
 		if (!comp_config[i].get_fw_version_fn)
 			continue;
 
+		if (sizeof(struct pldm_get_firmware_parameters_resp) + cnt_len >
+		    PLDM_MAX_DATA_SIZE) {
+			LOG_ERR("Data length %d is over PLDM_MAX_DATA_SIZE define size %d",
+				sizeof(struct pldm_get_firmware_parameters_resp) + cnt_len,
+				PLDM_MAX_DATA_SIZE);
+			resp_p->completion_code = PLDM_ERROR;
+			return PLDM_SUCCESS;
+		}
+
 		struct component_parameter_table *comp_table_p =
 			(struct component_parameter_table *)ver_str_p;
 		ver_str_p += sizeof(struct component_parameter_table);
@@ -968,7 +992,7 @@ static uint8_t get_firmware_parameter(void *mctp_inst, uint8_t *buf, uint16_t le
 		comp_table_p->comp_identifier = comp_config[i].comp_identifier;
 		comp_table_p->comp_classification = comp_config[i].comp_classification;
 		comp_table_p->active_comp_ver_str_type = PLDM_COMP_ASCII;
-		comp_table_p->pending_comp_ver_str_type = PLDM_COMP_VER_STR_TYPE_UNKNOWN;
+		comp_table_p->pending_comp_ver_str_type = PLDM_COMP_ASCII;
 		comp_table_p->pending_comp_ver_str_len = 0x00;
 		comp_table_p->comp_activation_methods = comp_config[i].activate_method;
 
@@ -981,12 +1005,24 @@ static uint8_t get_firmware_parameter(void *mctp_inst, uint8_t *buf, uint16_t le
 		cnt_len += sizeof(struct component_parameter_table) +
 			   comp_table_p->active_comp_ver_str_len;
 		ver_str_p += comp_table_p->active_comp_ver_str_len;
+
+		if (comp_config[i].pending_version_p) {
+			memcpy(ver_str_p, comp_config[i].pending_version_p,
+			       strlen(comp_config[i].pending_version_p));
+			comp_table_p->pending_comp_ver_str_len =
+				strlen(comp_config[i].pending_version_p);
+			cnt_len += comp_table_p->pending_comp_ver_str_len;
+			ver_str_p += comp_table_p->pending_comp_ver_str_len;
+		}
+
 		resp_p->comp_count++;
 	}
 
 	resp_p->completion_code = PLDM_SUCCESS;
 
 	*resp_len = sizeof(struct pldm_get_firmware_parameters_resp) + cnt_len;
+
+	LOG_INF("--resp_len = %d PLDM_MAX_DATA_SIZE = %d", *resp_len, PLDM_MAX_DATA_SIZE);
 
 	return PLDM_SUCCESS;
 }
