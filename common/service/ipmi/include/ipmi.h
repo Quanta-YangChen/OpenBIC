@@ -84,6 +84,7 @@ bool pal_is_not_return_cmd(uint8_t netfn, uint8_t cmd);
 bool common_add_sel_evt_record(common_addsel_msg_t *sel_msg);
 void ipmi_init(void);
 void IPMI_handler(void *arug0, void *arug1, void *arug2);
+uint8_t ipmb_notify_client(ipmi_msg_cfg *msg_cfg);
 
 enum {
 	/* generic completion codes 00h, C0h-FFh */
